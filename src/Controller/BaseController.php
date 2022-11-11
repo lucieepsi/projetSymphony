@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\Request;
 use App\Form\ContactType;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
+use App\Entity\Contact;
 
 class BaseController extends AbstractController
 {
@@ -22,22 +23,23 @@ class BaseController extends AbstractController
     #[Route('/contact', name: 'contact')]
     public function contact(Request $request, MailerInterface $mailer): Response
     {
-        $form = $this->createForm(ContactType::class);
+        $contact = new Contact();
+        $form = $this->createForm(ContactType::class, $contact);
 
         if($request->isMethod('POST')){
             $form->handleRequest($request);
-            if ($form->isSubmitted()&&$form->isValid()){
-                $this->addFlash('notice','Message envoyé');
-                $email = (new Email())
-                ->from($form->get('email')->getData())
-                ->to('lucie.delannoy@epsi.fr')
-                ->subject($form->get('sujet')->getData())
-                ->text($form->get('message')->getData());
+            if ($form->isSubmitted()&&$form->isValid()){   
+                
+                $contact->setDateEnvoi(new \Datetime());
+                $em = $this->getDoctrine()->getManager();
+                $em->persist($contact);
+                $em->flush();
               
-                $mailer->send($email);
+                $this->addFlash('notice','Message envoyé');
                 return $this->redirectToRoute('contact');
             }
         }
+
         return $this->render('base/contact.html.twig', [
             'form' => $form->createView()
         ]);
